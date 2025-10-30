@@ -1,11 +1,7 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:confetti/confetti.dart';
-
-import '../state/game_bloc.dart';
 import '../models/game_model.dart';
+import '../state/game_bloc.dart';
 import '../widgets/scrambled_grid.dart';
 
 class GameScreen extends StatefulWidget {
@@ -16,61 +12,51 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
-  final player = AudioPlayer();
-  late ConfettiController _confettiController;
   late AnimationController _shakeController;
+  late AnimationController _celebrationController;
   late Animation<double> _shakeAnimation;
-  late AnimationController _levelUpController;
+  bool _showLevelUp = false;
+  int _previousLevel = 1;
 
   @override
   void initState() {
     super.initState();
-
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 2),
-    );
-
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-
-    _shakeAnimation = Tween<double>(begin: 0, end: 10).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn),
-    );
-
-    _levelUpController = AnimationController(
+    _celebrationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-
-    context.read<GameBloc>().add(LoadWordEvent());
+    _shakeAnimation = Tween<double>(begin: 0, end: 10)
+        .chain(CurveTween(curve: Curves.elasticIn))
+        .animate(_shakeController);
   }
 
   @override
   void dispose() {
-    _confettiController.dispose();
     _shakeController.dispose();
-    _levelUpController.dispose();
-    player.dispose();
+    _celebrationController.dispose();
     super.dispose();
   }
 
-  void _showLevelUp(GameModel state) async {
-    _levelUpController.forward(from: 0);
-    _confettiController.play();
-    await player.play(AssetSource('sounds/success.mp3'));
+  void _onWrongAnswer() {
+    _shakeController.forward(from: 0);
+  }
 
+  void _showLevelUpDialog(int newLevel) {
+    setState(() => _showLevelUp = true);
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
+      builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.purple.shade400, Colors.blue.shade400],
+              colors: [Colors.purple.shade300, Colors.pink.shade300],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -79,10 +65,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.emoji_events, size: 80, color: Colors.yellow.shade300),
+              const Icon(Icons.emoji_events, size: 80, color: Colors.amber),
               const SizedBox(height: 16),
               const Text(
-                "LEVEL UP!",
+                'Level Up!',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -91,37 +77,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 8),
               Text(
-                "Level ${state.currentLevel}",
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "Complete ${state.wordsRequiredForNextLevel} words to reach next level!",
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, color: Colors.white),
+                'You reached Level $newLevel',
+                style: const TextStyle(fontSize: 20, color: Colors.white),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  context.read<GameBloc>().add(LoadWordEvent());
-                }, // This line needs to be fixed.
+                  setState(() => _showLevelUp = false);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: Colors.purple.shade700,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
+                  foregroundColor: Colors.purple,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text(
-                  "Continue",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                child: const Text('Continue', style: TextStyle(fontSize: 18)),
               ),
             ],
           ),
@@ -132,293 +105,304 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<GameBloc, GameModel>(
-      listener: (context, state) async {
-        if (state.selectedWord == state.currentWord &&
-            state.selectedWord.isNotEmpty) {
-          _confettiController.play();
-          await player.play(AssetSource('sounds/success.mp3'));
-        }
-
-        if (state.streak == 0 && state.selectedWord.isNotEmpty) {
-          // Assuming streak resets on wrong answer
-          _shakeController.forward(from: 0);
-          await player.play(AssetSource('sounds/click.mp3'));
-        }
-
-        // Check if level has changed to trigger level up animation and dialog
-        // This logic needs to be handled in the BLoC and passed as a separate event/state property.
-        // For now, we'll assume a level up if wordsCompletedInLevel is 0 and currentLevel > 1 after a correct answer.
-        if (state.wordsCompletedInLevel == 0 &&
-            state.currentLevel > 1 &&
-            state.selectedWord == state.currentWord) {
-          _showLevelUp(state);
-        }
-      },
-
-      builder: (context, state) {
-        final progress =
-            state.wordsCompletedInLevel / state.wordsRequiredForNextLevel;
-
-        return Scaffold(
-          backgroundColor: Colors.orange.shade100,
-
-          appBar: AppBar(
-            backgroundColor: Colors.yellow.shade600,
-            elevation: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Word Scramble 🐥",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "Level ${state.currentLevel}",
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-            actions: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // This column needs to be fixed.
-                  Text(
-                    "Score: ${state.score}",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  if (state.streak > 0) Text("🔥 ${state.streak}"),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: () => context.read<GameBloc>().add(LoadWordEvent()),
-              ),
-            ],
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.blue.shade100, Colors.purple.shade100],
           ),
+        ),
+        child: SafeArea(
+          child: BlocConsumer<GameBloc, GameModel>(
+            listener: (context, state) {
+              // Check for level up
+              if (state.currentLevel > _previousLevel && !_showLevelUp) {
+                _previousLevel = state.currentLevel;
+                _showLevelUpDialog(state.currentLevel);
+              }
+              _previousLevel = state.currentLevel;
+            },
+            builder: (context, state) {
+              if (state.currentWord.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          body: SafeArea(
-            child: Stack(
-              children: [
-                SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Progress bar
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black12, blurRadius: 5),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Progress to Level ${state.currentLevel + 1}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.purple.shade700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  minHeight: 12,
-                                  backgroundColor: Colors.grey.shade300,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    Colors.green.shade400,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                "${state.wordsCompletedInLevel}/${state.wordsRequiredForNextLevel}",
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  color: Colors.purple.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Crossword boxes with shake animation
-                        AnimatedBuilder(
-                          animation: _shakeAnimation,
-                          builder: (_, __) => Transform.translate(
-                            offset: Offset(
-                              _shakeAnimation.value *
-                                  sin(_shakeController.value * pi * 4),
-                              0,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(
-                                state.currentWord.length,
-                                (i) {
-                                  final isFilled =
-                                      i < state.selectedWord.length;
-                                  final letter = isFilled
-                                      ? state.selectedWord[i].toUpperCase()
-                                      : "";
-
-                                  return Container(
-                                    width: 50,
-                                    height: 60,
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isFilled
-                                          ? Colors.orange.shade200
-                                          : Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isFilled
-                                            ? Colors.orange.shade400
-                                            : Colors.grey.shade300,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        letter,
-                                        style: TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.purple.shade700,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        TextButton.icon(
-                          onPressed: () =>
-                              context.read<GameBloc>().add(ToggleHintEvent()),
-                          icon: Icon(
-                            state.showHint
-                                ? Icons.visibility_off
-                                : Icons.lightbulb_outline,
-                            size: 18,
-                          ),
-                          label: Text(
-                            state.showHint ? "Hide Hint" : "Show Hint",
-                          ),
-                        ),
-
-                        if (state.showHint)
-                          Text(
-                            "Hint: ${state.currentWord[0]}${'*' * (state.currentWord.length - 2)}${state.currentWord[state.currentWord.length - 1]}",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-
-                        const SizedBox(height: 16),
-
-                        // Scrambled grid
-                        // In the GameScreen's build method:
-                        ScrambledGrid(
-                          letters: state.scrambledLetters,
-                          onLetterSelected: (index, letter) {
-                            if (!state.selectedIndices.contains(index)) {
-                              context.read<GameBloc>().add(
-                                SelectLetterEvent(index),
-                              );
-                            }
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: state.selectedIndices.isEmpty
-                                  ? null
-                                  : () => context.read<GameBloc>().add(
-                                      UndoLetterEvent(),
-                                    ),
-                              icon: const Icon(Icons.undo),
-                              label: const Text("Undo"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade400,
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: state.selectedIndices.isEmpty
-                                  ? null
-                                  : () => context.read<GameBloc>().add(
-                                      ClearSelectionEvent(),
-                                    ),
-                              icon: const Icon(Icons.clear),
-                              label: const Text("Clear"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade400,
-                              ),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed:
-                                  state.selectedWord.length ==
-                                      state.currentWord.length
-                                  ? () => context.read<GameBloc>().add(
-                                      SubmitAnswerEvent(),
-                                    )
-                                  : null,
-                              icon: const Icon(Icons.check),
-                              label: const Text("Check"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _buildHeader(state),
+                    const SizedBox(height: 30),
+                    _buildProgressBar(state),
+                    const SizedBox(height: 30),
+                    _buildSelectedWordDisplay(state),
+                    const SizedBox(height: 40),
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(_shakeAnimation.value, 0),
+                          child: child,
+                        );
+                      },
+                      child: ScrambledGrid(
+                        letters: state.scrambledLetters,
+                        selectedIndices: state.selectedIndices,
+                        onLetterSelected: (index, letter) {
+                          context.read<GameBloc>().add(SelectLetterEvent(index));
+                        },
+                      ),
                     ),
-                  ),
-                ),
-
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: ConfettiWidget(
-                    confettiController: _confettiController,
-                    blastDirection: pi / 2,
-                    numberOfParticles: 30,
-                    gravity: 0.3,
-                    colors: const [
-                      Colors.red,
-                      Colors.blue,
-                      Colors.green,
-                      Colors.yellow,
-                      Colors.pink,
-                      Colors.purple,
+                    const SizedBox(height: 40),
+                    _buildControlButtons(context, state),
+                    if (state.showHint) ...[
+                      const SizedBox(height: 20),
+                      _buildHint(state),
                     ],
-                  ),
+                  ],
                 ),
-              ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(GameModel state) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildStatCard('Level', '${state.currentLevel}', Icons.stairs, Colors.blue),
+        _buildStatCard('Score', '${state.score}', Icons.star, Colors.amber),
+        _buildStatCard('Streak', '${state.streak}🔥', Icons.local_fire_department, Colors.orange),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
-        );
-      },
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(GameModel state) {
+    final progress = state.wordsCompletedInLevel / state.wordsRequiredForNextLevel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Progress to Level ${state.currentLevel + 1}',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 12,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade400),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${state.wordsCompletedInLevel}/${state.wordsRequiredForNextLevel} words',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedWordDisplay(GameModel state) {
+    final isComplete = state.selectedWord.length == state.currentWord.length;
+    final isCorrect = state.selectedWord == state.currentWord;
+    
+    Color backgroundColor = Colors.white;
+    Color textColor = Colors.grey.shade800;
+    
+    if (isComplete) {
+      if (isCorrect) {
+        backgroundColor = Colors.green.shade100;
+        textColor = Colors.green.shade800;
+      } else {
+        backgroundColor = Colors.red.shade100;
+        textColor = Colors.red.shade800;
+      }
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isComplete
+              ? (isCorrect ? Colors.green : Colors.red)
+              : Colors.grey.shade300,
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            state.selectedWord.isEmpty ? 'Tap letters to spell' : state.selectedWord.toUpperCase(),
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 4,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${state.selectedWord.length}/${state.currentWord.length} letters',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlButtons(BuildContext context, GameModel state) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      alignment: WrapAlignment.center,
+      children: [
+        _buildButton(
+          label: 'Undo',
+          icon: Icons.undo,
+          color: Colors.orange,
+          onPressed: state.selectedIndices.isNotEmpty
+              ? () => context.read<GameBloc>().add(UndoLetterEvent())
+              : null,
+        ),
+        _buildButton(
+          label: 'Clear',
+          icon: Icons.clear,
+          color: Colors.red,
+          onPressed: state.selectedIndices.isNotEmpty
+              ? () => context.read<GameBloc>().add(ClearSelectionEvent())
+              : null,
+        ),
+        _buildButton(
+          label: state.showHint ? 'Hide Hint' : 'Hint (-1 🔥)',
+          icon: Icons.lightbulb,
+          color: Colors.amber,
+          onPressed: () => context.read<GameBloc>().add(ToggleHintEvent()),
+        ),
+        _buildButton(
+          label: 'Skip',
+          icon: Icons.skip_next,
+          color: Colors.blue,
+          onPressed: () => context.read<GameBloc>().add(LoadWordEvent()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    VoidCallback? onPressed,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: onPressed != null ? color : Colors.grey.shade300,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        elevation: onPressed != null ? 4 : 0,
+      ),
+    );
+  }
+
+  Widget _buildHint(GameModel state) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade100,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.amber.shade300, width: 2),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lightbulb, color: Colors.amber.shade800),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'The word is: ${state.currentWord.toUpperCase()}',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber.shade900,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

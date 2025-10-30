@@ -4,7 +4,6 @@ import 'package:scramble_word_game/data/word_repository.dart';
 import 'package:scramble_word_game/models/Levelup.dart';
 import 'package:scramble_word_game/models/game_model.dart';
 
-
 class GameUseCase {
   final WordRepository wordRepository;
 
@@ -15,8 +14,10 @@ class GameUseCase {
     List<String> scrambledLetters = currentWord.split('')..shuffle();
     
     // Ensure the word is actually scrambled
-    while (scrambledLetters.join() == currentWord && currentWord.length > 1) {
+    int attempts = 0;
+    while (scrambledLetters.join() == currentWord && currentWord.length > 1 && attempts < 10) {
       scrambledLetters.shuffle();
+      attempts++;
     }
 
     return currentState.copyWith(
@@ -29,7 +30,14 @@ class GameUseCase {
   }
 
   GameModel selectLetter(GameModel currentState, int index) {
+    // Don't allow selecting the SAME INDEX twice (same tile)
+    // But allow selecting different tiles with the same letter
     if (currentState.selectedIndices.contains(index)) {
+      return currentState;
+    }
+
+    // Don't allow selecting more letters than the word length
+    if (currentState.selectedIndices.length >= currentState.currentWord.length) {
       return currentState;
     }
 
@@ -38,24 +46,8 @@ class GameUseCase {
         .map((i) => currentState.scrambledLetters[i])
         .join();
 
-    // Check if we have a complete word and if it's correct
-    if (newSelectedWord.length == currentState.currentWord.length) {
-      if (newSelectedWord == currentState.currentWord) {
-        // Correct answer - automatically handle it
-        return handleCorrectAnswer(currentState.copyWith(
-          selectedIndices: newSelectedIndices,
-          selectedWord: newSelectedWord,
-        ));
-      } else {
-        // Wrong answer - just update the selection
-        return currentState.copyWith(
-          selectedIndices: newSelectedIndices,
-          selectedWord: newSelectedWord,
-        );
-      }
-    }
-
-    // Normal case - just update selection
+    // Just update the selection - don't auto-submit
+    // The UI or bloc will handle submission when word is complete
     return currentState.copyWith(
       selectedIndices: newSelectedIndices,
       selectedWord: newSelectedWord,
@@ -72,7 +64,10 @@ class GameUseCase {
   GameModel undoLastLetter(GameModel currentState) {
     if (currentState.selectedIndices.isEmpty) return currentState;
 
-    final newSelectedIndices = currentState.selectedIndices.sublist(0, currentState.selectedIndices.length - 1);
+    final newSelectedIndices = currentState.selectedIndices.sublist(
+      0, 
+      currentState.selectedIndices.length - 1
+    );
     final newSelectedWord = newSelectedIndices
         .map((i) => currentState.scrambledLetters[i])
         .join();
@@ -85,7 +80,10 @@ class GameUseCase {
 
   GameModel toggleHint(GameModel currentState) {
     final newShowHint = !currentState.showHint;
-    final newStreak = newShowHint ? max(0, currentState.streak - 1) : currentState.streak;
+    // Only reduce streak when showing hint, not when hiding it
+    final newStreak = (newShowHint && !currentState.showHint) 
+        ? max(0, currentState.streak - 1) 
+        : currentState.streak;
 
     return currentState.copyWith(
       showHint: newShowHint,
@@ -95,9 +93,12 @@ class GameUseCase {
 
   /// Calculate points for current answer
   int calculatePoints(GameModel currentState) {
+    final basePoints = 10;
     final levelBonus = currentState.currentLevel * 5;
     final streakBonus = currentState.streak * 5;
-    return 10 + levelBonus + streakBonus;
+    final wordLengthBonus = currentState.currentWord.length * 2;
+    
+    return basePoints + levelBonus + streakBonus + wordLengthBonus;
   }
 
   /// Check if player should level up
@@ -109,6 +110,7 @@ class GameUseCase {
   /// Get the new level data after leveling up
   LevelUpData calculateLevelUp(GameModel currentState) {
     final newLevel = currentState.currentLevel + 1;
+    // Gradually increase words required: starts at 3, increases by 1 every 3 levels
     final newWordsRequired = 3 + (newLevel ~/ 3);
     
     return LevelUpData(
@@ -153,8 +155,11 @@ class GameUseCase {
   }
 
   GameModel handleWrongAnswer(GameModel currentState) {
+    // Reset streak and clear selection
     return currentState.copyWith(
       streak: 0,
+      selectedIndices: [],
+      selectedWord: '',
     );
   }
 }

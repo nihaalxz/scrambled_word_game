@@ -17,7 +17,21 @@ class GameBloc extends Bloc<GameEvent, GameModel> {
     });
 
     on<SelectLetterEvent>((event, emit) {
-      emit(_gameUseCase.selectLetter(state, event.index));
+      final newState = _gameUseCase.selectLetter(state, event.index);
+      emit(newState);
+      
+      // Auto-check if word is complete
+      if (newState.selectedWord.length == newState.currentWord.length) {
+        // Use a short delay to show the completed word before processing
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (newState.selectedWord == newState.currentWord) {
+            add(SubmitAnswerEvent());
+          } else {
+            // Wrong answer - just clear selection with delay
+            add(WrongAnswerEvent());
+          }
+        });
+      }
     });
 
     on<UndoLetterEvent>((event, emit) {
@@ -36,15 +50,19 @@ class GameBloc extends Bloc<GameEvent, GameModel> {
       if (state.selectedWord == state.currentWord) {
         // Correct answer
         var newState = _gameUseCase.handleCorrectAnswer(state);
-
-        // Load new word ✅
-        newState = _gameUseCase.loadNewWord(newState);
-
         emit(newState);
-      } else {
-        // Wrong answer
-        emit(_gameUseCase.handleWrongAnswer(state));
+        
+        // Load new word after a brief delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          add(LoadWordEvent());
+        });
       }
+    });
+
+    on<WrongAnswerEvent>((event, emit) {
+      // Handle wrong answer - reset streak and clear selection
+      final newState = _gameUseCase.handleWrongAnswer(state);
+      emit(newState);
     });
   }
 }

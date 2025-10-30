@@ -11,6 +11,8 @@ class SelectLetterEvent extends GameEvent {
 
 class SubmitAnswerEvent extends GameEvent {}
 
+class WrongAnswerEvent extends GameEvent {}
+
 class UndoLetterEvent extends GameEvent {}
 
 class ClearSelectionEvent extends GameEvent {}
