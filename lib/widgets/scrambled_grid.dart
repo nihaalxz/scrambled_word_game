@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 class ScrambledGrid extends StatelessWidget {
   final List<String> letters;
-  final Function(String) onSwipeLetter;
+  final Function(int index, String letter) onLetterSelected;
 
   const ScrambledGrid({
     super.key,
     required this.letters,
-    required this.onSwipeLetter,
+    required this.onLetterSelected,
   });
 
   @override
@@ -15,11 +15,14 @@ class ScrambledGrid extends StatelessWidget {
     return Wrap(
       spacing: 15,
       runSpacing: 15,
-      children: letters.map((letter) {
+      children: letters.asMap().entries.map((entry) {
+        final index = entry.key;
+        final letter = entry.value;
+        
         return GestureDetector(
-          onTapDown: (_) => onSwipeLetter(letter), // Tap support
-          onPanStart: (_) => onSwipeLetter(letter), // Drag start support
-          onPanUpdate: (_) => onSwipeLetter(letter), // Drag across letters
+          onTapDown: (_) => onLetterSelected(index, letter),
+          onPanStart: (_) => onLetterSelected(index, letter),
+          onPanUpdate: (_) => onLetterSelected(index, letter),
           child: Container(
             padding: const EdgeInsets.all(26),
             decoration: BoxDecoration(

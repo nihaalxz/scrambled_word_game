@@ -26,8 +26,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
-    
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
+
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -81,12 +83,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               const SizedBox(height: 16),
               const Text(
                 "LEVEL UP!",
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Level ${state.currentLevel}",
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -103,9 +113,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.purple.shade700,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
                 ),
-                child: const Text("Continue", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "Continue",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -118,12 +134,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return BlocConsumer<GameBloc, GameModel>(
       listener: (context, state) async {
-        if (state.selectedWord == state.currentWord && state.selectedWord.isNotEmpty) {
+        if (state.selectedWord == state.currentWord &&
+            state.selectedWord.isNotEmpty) {
           _confettiController.play();
           await player.play(AssetSource('sounds/success.mp3'));
         }
 
-        if (state.streak == 0 && state.selectedWord.isNotEmpty) { // Assuming streak resets on wrong answer
+        if (state.streak == 0 && state.selectedWord.isNotEmpty) {
+          // Assuming streak resets on wrong answer
           _shakeController.forward(from: 0);
           await player.play(AssetSource('sounds/click.mp3'));
         }
@@ -131,13 +149,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         // Check if level has changed to trigger level up animation and dialog
         // This logic needs to be handled in the BLoC and passed as a separate event/state property.
         // For now, we'll assume a level up if wordsCompletedInLevel is 0 and currentLevel > 1 after a correct answer.
-        if (state.wordsCompletedInLevel == 0 && state.currentLevel > 1 && state.selectedWord == state.currentWord) {
- _showLevelUp(state);
+        if (state.wordsCompletedInLevel == 0 &&
+            state.currentLevel > 1 &&
+            state.selectedWord == state.currentWord) {
+          _showLevelUp(state);
         }
       },
 
       builder: (context, state) {
-        final progress = state.wordsCompletedInLevel / state.wordsRequiredForNextLevel;
+        final progress =
+            state.wordsCompletedInLevel / state.wordsRequiredForNextLevel;
 
         return Scaffold(
           backgroundColor: Colors.orange.shade100,
@@ -148,15 +169,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Word Scramble 🐥", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                Text("Level ${state.currentLevel}", style: const TextStyle(fontSize: 12)),
+                const Text(
+                  "Word Scramble 🐥",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Level ${state.currentLevel}",
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
             ),
             actions: [
               Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [ // This column needs to be fixed.
-                  Text("Score: ${state.score}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                children: [
+                  // This column needs to be fixed.
+                  Text(
+                    "Score: ${state.score}",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   if (state.streak > 0) Text("🔥 ${state.streak}"),
                 ],
               ),
@@ -170,26 +201,31 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           body: SafeArea(
             child: Stack(
               children: [
-
                 SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-
                         // Progress bar
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black12, blurRadius: 5),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Progress to Level ${state.currentLevel + 1}",
-                                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple.shade700)),
+                              Text(
+                                "Progress to Level ${state.currentLevel + 1}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple.shade700,
+                                ),
+                              ),
                               const SizedBox(height: 8),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
@@ -197,12 +233,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                   value: progress,
                                   minHeight: 12,
                                   backgroundColor: Colors.grey.shade300,
-                                  valueColor: AlwaysStoppedAnimation(Colors.green.shade400),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.green.shade400,
+                                  ),
                                 ),
                               ),
-                              Text("${state.wordsCompletedInLevel}/${state.wordsRequiredForNextLevel}",
+                              Text(
+                                "${state.wordsCompletedInLevel}/${state.wordsRequiredForNextLevel}",
                                 textAlign: TextAlign.right,
-                                style: TextStyle(color: Colors.purple.shade700, fontWeight: FontWeight.bold)),
+                                style: TextStyle(
+                                  color: Colors.purple.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -213,29 +256,53 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         AnimatedBuilder(
                           animation: _shakeAnimation,
                           builder: (_, __) => Transform.translate(
-                            offset: Offset(_shakeAnimation.value * sin(_shakeController.value * pi * 4), 0),
+                            offset: Offset(
+                              _shakeAnimation.value *
+                                  sin(_shakeController.value * pi * 4),
+                              0,
+                            ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(state.currentWord.length, (i) {
-                                final isFilled = i < state.selectedWord.length;
-                                final letter = isFilled ? state.selectedWord[i].toUpperCase() : "";
+                              children: List.generate(
+                                state.currentWord.length,
+                                (i) {
+                                  final isFilled =
+                                      i < state.selectedWord.length;
+                                  final letter = isFilled
+                                      ? state.selectedWord[i].toUpperCase()
+                                      : "";
 
-                                return Container(
-                                  width: 50,
-                                  height: 60,
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  decoration: BoxDecoration(
-                                    color: isFilled ? Colors.orange.shade200 : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isFilled ? Colors.orange.shade400 : Colors.grey.shade300, width: 2),
-                                  ),
-                                  child: Center(
-                                    child: Text(letter,
-                                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.purple.shade700)),
-                                  ),
-                                );
-                              }),
+                                  return Container(
+                                    width: 50,
+                                    height: 60,
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isFilled
+                                          ? Colors.orange.shade200
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isFilled
+                                            ? Colors.orange.shade400
+                                            : Colors.grey.shade300,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        letter,
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -243,26 +310,39 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         const SizedBox(height: 12),
 
                         TextButton.icon(
-                          onPressed: () => context.read<GameBloc>().add(ToggleHintEvent()),
-                          icon: Icon(state.showHint ? Icons.visibility_off : Icons.lightbulb_outline, size: 18),
-                          label: Text(state.showHint ? "Hide Hint" : "Show Hint"),
+                          onPressed: () =>
+                              context.read<GameBloc>().add(ToggleHintEvent()),
+                          icon: Icon(
+                            state.showHint
+                                ? Icons.visibility_off
+                                : Icons.lightbulb_outline,
+                            size: 18,
+                          ),
+                          label: Text(
+                            state.showHint ? "Hide Hint" : "Show Hint",
+                          ),
                         ),
 
                         if (state.showHint)
                           Text(
                             "Hint: ${state.currentWord[0]}${'*' * (state.currentWord.length - 2)}${state.currentWord[state.currentWord.length - 1]}",
-                            style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
 
                         const SizedBox(height: 16),
 
                         // Scrambled grid
+                        // In the GameScreen's build method:
                         ScrambledGrid(
                           letters: state.scrambledLetters,
-                          onSwipeLetter: (letter) {
-                            final index = state.scrambledLetters.indexOf(letter);
-                            if (index != -1 && !state.selectedIndices.contains(index)) {
-                              context.read<GameBloc>().add(SelectLetterEvent(index));
+                          onLetterSelected: (index, letter) {
+                            if (!state.selectedIndices.contains(index)) {
+                              context.read<GameBloc>().add(
+                                SelectLetterEvent(index),
+                              );
                             }
                           },
                         ),
@@ -273,30 +353,45 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           spacing: 8,
                           children: [
                             ElevatedButton.icon(
-                              onPressed: state.selectedIndices.isEmpty ? null
-                                : () => context.read<GameBloc>().add(UndoLetterEvent()),
+                              onPressed: state.selectedIndices.isEmpty
+                                  ? null
+                                  : () => context.read<GameBloc>().add(
+                                      UndoLetterEvent(),
+                                    ),
                               icon: const Icon(Icons.undo),
                               label: const Text("Undo"),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade400),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade400,
+                              ),
                             ),
                             ElevatedButton.icon(
-                              onPressed: state.selectedIndices.isEmpty ? null
-                                : () => context.read<GameBloc>().add(ClearSelectionEvent()),
+                              onPressed: state.selectedIndices.isEmpty
+                                  ? null
+                                  : () => context.read<GameBloc>().add(
+                                      ClearSelectionEvent(),
+                                    ),
                               icon: const Icon(Icons.clear),
                               label: const Text("Clear"),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade400,
+                              ),
                             ),
                             ElevatedButton.icon(
-                              onPressed: state.selectedWord.length == state.currentWord.length
-                                ? () => context.read<GameBloc>().add(SubmitAnswerEvent())
-                                : null,
+                              onPressed:
+                                  state.selectedWord.length ==
+                                      state.currentWord.length
+                                  ? () => context.read<GameBloc>().add(
+                                      SubmitAnswerEvent(),
+                                    )
+                                  : null,
                               icon: const Icon(Icons.check),
                               label: const Text("Check"),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade400),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade400,
+                              ),
                             ),
                           ],
                         ),
-
                       ],
                     ),
                   ),
@@ -309,10 +404,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     blastDirection: pi / 2,
                     numberOfParticles: 30,
                     gravity: 0.3,
-                    colors: const [Colors.red, Colors.blue, Colors.green, Colors.yellow, Colors.pink, Colors.purple],
+                    colors: const [
+                      Colors.red,
+                      Colors.blue,
+                      Colors.green,
+                      Colors.yellow,
+                      Colors.pink,
+                      Colors.purple,
+                    ],
                   ),
                 ),
-
               ],
             ),
           ),

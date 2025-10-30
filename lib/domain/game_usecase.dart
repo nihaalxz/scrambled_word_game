@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'package:scramble_word_game/data/word_repository.dart';
+import 'package:scramble_word_game/models/Levelup.dart';
 import 'package:scramble_word_game/models/game_model.dart';
+
 
 class GameUseCase {
   final WordRepository wordRepository;
@@ -36,6 +38,24 @@ class GameUseCase {
         .map((i) => currentState.scrambledLetters[i])
         .join();
 
+    // Check if we have a complete word and if it's correct
+    if (newSelectedWord.length == currentState.currentWord.length) {
+      if (newSelectedWord == currentState.currentWord) {
+        // Correct answer - automatically handle it
+        return handleCorrectAnswer(currentState.copyWith(
+          selectedIndices: newSelectedIndices,
+          selectedWord: newSelectedWord,
+        ));
+      } else {
+        // Wrong answer - just update the selection
+        return currentState.copyWith(
+          selectedIndices: newSelectedIndices,
+          selectedWord: newSelectedWord,
+        );
+      }
+    }
+
+    // Normal case - just update selection
     return currentState.copyWith(
       selectedIndices: newSelectedIndices,
       selectedWord: newSelectedWord,
@@ -89,7 +109,7 @@ class GameUseCase {
   /// Get the new level data after leveling up
   LevelUpData calculateLevelUp(GameModel currentState) {
     final newLevel = currentState.currentLevel + 1;
-    final newWordsRequired = 3 + (newLevel ~/ 3); // Increases every 3 levels
+    final newWordsRequired = 3 + (newLevel ~/ 3);
     
     return LevelUpData(
       newLevel: newLevel,
@@ -132,22 +152,9 @@ class GameUseCase {
     );
   }
 
-  
-
   GameModel handleWrongAnswer(GameModel currentState) {
     return currentState.copyWith(
       streak: 0,
     );
   }
-}
-
-/// Data class for level up information
-class LevelUpData {
-  final int newLevel;
-  final int wordsRequiredForNextLevel;
-
-  LevelUpData({
-    required this.newLevel,
-    required this.wordsRequiredForNextLevel,
-  });
 }
